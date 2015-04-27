@@ -1,0 +1,4 @@
+v 3
+d Stata package smcfcs
+
+p smcfcs Multiple imputation of partially observed covariates by substantive model compatible fully conditional specification (smcfcs)

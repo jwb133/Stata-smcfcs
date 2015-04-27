@@ -1,0 +1,16 @@
+v 3
+d smcfcs Multiple imputation of partially observed covariates by substantive model compatible fully conditional specification
+d Jonathan Bartlett, London School of Hygiene & Tropical Medicine.
+d jonathan.bartlett@lshtm.ac.uk
+d www.missingdata.org.uk
+d
+d Tim Morris, MRC Clinical Trials Unit at UCL.
+d tim.morris@ucl.ac.uk
+d
+d Distribution-Date: 20150205
+
+* I can also insert comments; these will not be displayed.
+* f lines name the files that comprise your package:
+
+f smcfcs.ado
+f smcfcs.sthlp

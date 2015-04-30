@@ -1,4 +1,4 @@
-*! version 1.8 J Bartlett & T Morris 5th Feb 2015
+*! J Bartlett & T Morris 30th April 2015
 * For history, see end of this file.
 
 capture program drop smcfcs
@@ -221,6 +221,15 @@ else {
 	local numgroups 1
 }
 
+*generate t0Index, to account for delayed entry/left truncation, if necessary
+if "`smcmd'"=="stcox" {
+	`quietnoisy' stdescribe
+	if (r(t0_max)>0) {
+		di "Late entry survival data detected"
+		mata: t0IndexGen()
+	}
+}
+
 tempvar smcfcsid
 gen `smcfcsid' = _n
 
@@ -352,6 +361,9 @@ if "`savetrace'"!="" {
 if "`chainonly'"!="" {
 	di ""
 	di "Chainonly option specified. No imputations produced."
+	
+	capture drop t0Index
+	capture drop H0
 }
 else {
 	*combine imputed datasets across by groups
@@ -360,9 +372,10 @@ else {
 			quietly append using `smcfcsimp_`groupnum'_`imputation''
 		}
 	}
-	if "`outcomeModType'"=="cox" {
-		drop H0
-	}
+	
+	capture drop t0Index
+	capture drop H0
+	
 	quietly replace _mj=0 if _mj==.
 	quietly gen _mi=`smcfcsid'
 	quietly sort _mj _mi
@@ -466,6 +479,29 @@ void imputePermute(string scalar varName, string scalar obsIndicator)
 		data[i] = draw
 	}
 	st_store(., varName, data)
+}
+
+/*generates a Stata variable t0Index that is used to locate H0(_t0) in Cox models*/
+void t0IndexGen()
+{
+	st_view(t, ., "_t")
+	st_view(t0, ., "_t0")
+	n = st_nobs()
+	
+	loc = t, (1..n)'
+	loc = sort(loc,1)
+	(void) st_addvar("long", "t0Index")
+	st_view(t0Index, ., "t0Index")
+	
+	for (i=1; i<=n; i++) {
+		lastIndex = sum(loc[.,1] :<= J(n,1,t0[i]))
+		if (lastIndex==0) {
+			t0Index[i] = 0
+		}
+		else {
+			t0Index[i] = loc[lastIndex,2]
+		}
+	}
 }
 
 void outcomeImp(string scalar missingnessIndicatorVarName, string varBeingImputed, string scalar outcomeModelCmd)
@@ -587,12 +623,18 @@ void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed, s
 		d = st_data(., "_d")
 		t = st_data(., "_t")
 		H0 = st_data(., "H0")
-		/*st_view(d, ., "_d")
-		st_view(t, ., "_t")
-		st_view(H0, ., "H0")*/
+		
+		/*generate H0(_t0) for delayed entry, if needed*/
+		if (_st_varindex("t0Index")!=.) {
+			delayedEntry = 1
+			H0append = 0 \ H0
+			t0Index = 1 :+ st_data(., "t0Index")
+			H0_t0 = H0append[t0Index]
+			/*now we can replace H0 with H0(t)-H0(t0)*/
+			H0 = H0 - H0_t0
+		}
 	}
 	else {
-		/*st_view(y, ., smout)*/
 		y = st_data(., smout)
 	}
 	
@@ -767,6 +809,7 @@ exit
 
 History of smcfcs
 
+30/04/2015  Added code so that Cox model with delayed entry/left truncation is accommodated.
 05/02/2015  Allowed use of data that are already -mi set-. Added a clear option so that if imputations already exist, smcfcs can clear them instead of exiting with an error.
 07/01/2015  Changed use of Mata function selectindex so that Stata version 11 and 12 users can still use the command.
 			Added check to ensure that dataset is not mi set when smcfcs is called.

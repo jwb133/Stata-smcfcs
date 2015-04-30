@@ -122,7 +122,11 @@ a covariate model which includes any fully observed variables in the substantive
 {pstd}
 {cmd:smcfcs} multiply imputes missing values in covariates based on the fully conditional specification (or chained equations) approach. The 
 user must specify a substantive model for how the outcome depends on the covariates. At present, linear ({help regress:regress}), logistic ({help logistic:logistic}) 
-and Cox proportional hazards ({help stcox:stcox}) substantive models are supported. Each partially observed variable is then imputed from an imputation model 
+and Cox proportional hazards ({help stcox:stcox}) substantive models are supported. For the latter, the data should be {help stset:stset} prior
+to running {cmd:smcfcs}. Right censoring and delayed entry (left truncation) are supported.
+
+{pstd}
+Each partially observed variable is then imputed from an imputation model 
 which is compatible with the specified substantive model. For continuous and binary outcomes, {cmd:smcfcs} will additionally impute any missing values
 in the outcome, using the specified substantive model as the imputation model.
 

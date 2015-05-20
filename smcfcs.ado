@@ -1,4 +1,4 @@
-*! J Bartlett & T Morris 30th April 2015
+*! J Bartlett & T Morris
 * For history, see end of this file.
 
 capture program drop smcfcs
@@ -196,15 +196,6 @@ if "`chainonly'"!="" {
 	local m = 1
 }
 
-if "`savetrace'"!="" {
-	local postfilestring "iter"
-	foreach var of varlist `partiallyObserved' {
-		local postfilestring "`postfilestring' `var'_mean `var'_sd"
-	}
-	tempname tracefile
-	postfile `tracefile' `postfilestring' using `savetrace', replace
-}
-
 local quietnoisy quietly
 if "`noisily'"!="" {
 	local quietnoisy
@@ -324,13 +315,6 @@ gen `smcfcsid' = _n
 				``var'covariateModelFit' 
 								
 				mata: covImp("``var'_r'","`var'","`smout'","`outcomeModelCommand'")
-				
-				if "`savetrace'"!="" {
-					summ `var' if ``var'_r'==0
-					local traceimpmean = r(mean)
-					local traceimpsd = r(sd)
-					local tracestring "`tracestring' (`traceimpmean') (`traceimpsd')"
-				}
 			}
 			
 			*if necessary, impute outcome
@@ -341,8 +325,32 @@ gen `smcfcsid' = _n
 			}
 			
 			if "`savetrace'"!="" {
-				*post iteration means and SDs
-				post `tracefile' (`cyclenum') `tracestring'
+				*first time, set up postfile
+				if "`groupnum'"=="1" & "`imputation'"=="1" & "`cyclenum'"=="1" {
+					local postfilestring imp iter
+					tempname b
+					matrix `b'=e(b)
+					local coefnames : colnames `b'
+					local coefnames : subinstr local coefnames "." "", all
+					local newcoefnames
+					foreach name of local coefnames {
+						local newcoefnames `newcoefnames' est`name'
+					}
+					local postfilestring `postfilestring' `newcoefnames'
+					tempname tracefile
+					postfile `tracefile' `postfilestring' using `savetrace', replace
+				}
+			
+				*post iteration and current estimates of substantive model parameters
+				matrix `b'=e(b)
+				local numparms = colsof(`b')
+				local nextcoef = (`b'[1,1])
+				local tracestring (`nextcoef')
+				forvalues parm=2(1)`numparms' {
+					local nextcoef = `b'[1,`parm']
+					local tracestring `tracestring' (`nextcoef')
+				}
+				post `tracefile' (`imputation') (`cyclenum') `tracestring'
 			}
 		}
 		*save imputed dataset
@@ -809,6 +817,8 @@ exit
 
 History of smcfcs
 
+20/05/2015  Changed savetrace behaviour so that it saved estimates of substantive model parameters, rather than
+			means and SDs of imputed variables.
 30/04/2015  Added code so that Cox model with delayed entry/left truncation is accommodated.
 05/02/2015  Allowed use of data that are already -mi set-. Added a clear option so that if imputations already exist, smcfcs can clear them instead of exiting with an error.
 07/01/2015  Changed use of Mata function selectindex so that Stata version 11 and 12 users can still use the command.

@@ -36,7 +36,7 @@
 {synopt :{opt eq(string)}}{it:string} expressions for custom prediction equations{p_end}
 {synopt :{opt rseed(string)}}set Stata's random seed{p_end}
 {synopt :{opt chainonly}}perform iterations of SMC-FCS (as specified by iteration option) without creating imputations{p_end}
-{synopt :{opt savetrace(filename)}}save means and SDs of imputed values from each iteration in {it:filename}.dta{p_end}
+{synopt :{opt savetrace(filename)}}save estimates of substantive model parameters from each iteration in {it:filename}.dta{p_end}
 {synopt :{opt noisily}}runs {cmd:smcfcs} noisily{p_end}
 {synopt :{opt by}({help varlist:varlist})}specifies that imputation be performed separately by groups defined by {help varlist:varlist}{p_end}
 {synopt :{opt clear}}specifies that any multiply imputed data in memory be cleared. {p_end}
@@ -104,7 +104,7 @@ a covariate model which includes any fully observed variables in the substantive
 {opt chainonly} perform iterations of SMC-FCS (as specified by iteration option) without creating imputations. Useful in conjunction with {opt savetrace} to assess convergence.
 
 {phang}
-{opt savetrace(filename)} save means and SDs of imputed values from each iteration in {it:filename}.dta. Useful for checking convergence of SMC-FCS.
+{opt savetrace(filename)} save estimates of substantive model parameters from each iteration in {it:filename}.dta. Useful for checking convergence of SMC-FCS.
 
 {phang}
 {opt noisily} runs SMC-FCS noisily. Useful for diagnosing errors.
@@ -158,7 +158,7 @@ the warning has appeared for a small proportion of subjects.
 
 {pstd}
 The default number of iterations of 10 may not be sufficient for SMC-FCS to converge in a given setting. Users should check convergence of the algorithm by using
-the {opt chainonly} and {opt savetrace} options, using a large number of iterations, as in standard FCS/ICE (see {help mi impute chained:mi impute chained}).
+the {opt chainonly} and {opt savetrace} options, using a large number of iterations.
 
 {pstd}
 If the {opt by} option is specified, {cmd:smcfcs} imputes separately in groups defined by the corresponding {help varlist:varlist}, and then combines these to

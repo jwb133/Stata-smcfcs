@@ -1,1 +1,3 @@
 Stata-smcfcs is a GitHub repository for the Stata program smcfcs, which implements substantive model compatible fully conditional specification multiple imputation.
+
+See the bottom of the ado file for revision history of the program.

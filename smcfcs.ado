@@ -33,7 +33,10 @@ macro shift
 if "`smcmd'"=="reg" {
 	local smcmd = regress
 }
-if (inlist("`smcmd'","stcox","logit","logistic","regress","compet")==0) {
+if "`smcmd'"=="logit" {
+	local smcmd = logistic
+}
+if (inlist("`smcmd'","stcox","logistic","regress","compet")==0) {
 		display as error "Specified substantive model regression command (`smcmd') not supported by smcfcs"
 		exit 0
 }
@@ -43,11 +46,6 @@ if ("`smcmd'"!="stcox") & ("`smcmd'"!="compet") {
 		macro shift
 }
 local smcov `*'
-
-if ("`smcmd'"=="stcox") {
-	*stset the data
-	stset `time', enter(`enter') failure(`failure')
-}
 
 if ("`smcmd'"=="compet") {
 	if ("`failure'"=="") {
@@ -295,13 +293,13 @@ gen `smcfcsid' = _n
 				*fit covariate model
 				``var'covariateModelFit' 
 				*impute missing covariate values
-				mata: covImp("``var'_r'","`var'")
+				mata: covImp("``var'_r'")
 			}
 			
 			*if necessary, impute outcome
 			if e(cmd)=="regress" | e(cmd)=="logistic" | e(cmd)=="logit" {
 				if `outcomeMiss' == 1 {
-					mata: outcomeImp("``smout'_r'","`smout'","`outcomeModelCommand'")
+					mata: outcomeImp("``smout'_r'")
 				}		
 			}
 			
@@ -380,13 +378,30 @@ else {
 	if "`outcomeMiss'"=="1" {
 		quietly mi register imputed `smout'
 	}
-  if "`miconv'" != "" & "`miconv'" != "flong" {
-    mi convert `miconv' , clear
-  }
+	if "`miconv'" != "" & "`miconv'" != "flong" {
+		mi convert `miconv' , clear
+	}
 
 	if "`by'"=="" {
 		display as text "Fitting substantive model to multiple imputations"
-		mi estimate: `outcomeModelCommand'
+		if "`smcmd'"=="compet" {
+			quietly summ `failure'
+			local numFailures = r(max)
+			forvalues i=1(1)`numFailures' {
+				display as text "Cox model for cause `i'"
+				mi stset `time', failure(`failure'==`i')
+				mi estimate: stcox `smcov'
+			}
+		}
+		else {
+			if "`smcmd'"=="compet" {
+				local outcomeModelCommand stcox `smcov'
+			}
+			else {
+				local outcomeModelCommand `smcmd' `smout' `smcov'
+			}
+			mi estimate: `outcomeModelCommand'
+		}
 	}
 	else {
 		display as text "Since you imputed separately by groups, smcfcs has not fitted a model to the combined (across groups) imputations."
@@ -418,20 +433,6 @@ program define postdraw_strip
 	_ms_omit_info smcfcsb
 	local cols = colsof(smcfcsb)
 	matrix smcfcsnomit =  J(1,`cols',1) - r(omit)
-end
-
-capture program drop compet
-program define compet, eclass
-syntax varlist, time(varname) failure(varname) enter(varname)
-
-levelsof `failure', local(levels) 
-foreach l of local levels {
-	stset `time', failure(`failure'==`l') enter(`enter')
-	stcox `varlist'
-	capture drop H0_`l'
-	predict H0_`l', basechazard
-}
-
 end
 
 mata:
@@ -507,13 +508,17 @@ void t0IndexGen()
 	}
 }
 
-void outcomeImp(string scalar missingnessIndicatorVarName, string varBeingImputed, string scalar outcomeModelCmd)
-{
-	st_view(r, ., missingnessIndicatorVarName)
-	st_view(outcomeVar, ., varBeingImputed)
-	
+void outcomeImp(string scalar missingnessIndicatorVarName)
+{	
 	/* fit substantive mode */
-	stata(outcomeModelCmd)
+	smcmd = st_local("smcmd")
+	smout = st_local("smout")
+	smcov = st_local("smcov")
+	outcomeModelCommand = smcmd + " " + smout + " " + smcov
+	stata(outcomeModelCommand)
+	
+	st_view(r, ., missingnessIndicatorVarName)
+	st_view(outcomeVar, ., smout)
 	
 	outcomeModelCmd = st_global("e(cmd)")
 	postdraw()
@@ -547,7 +552,7 @@ void outcomeImp(string scalar missingnessIndicatorVarName, string varBeingImpute
 }
 
 
-void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed)
+void covImp(string scalar missingnessIndicatorVarName)
 {
 	r = st_data(., missingnessIndicatorVarName)
 	rjLimit = strtoreal(st_local("rjlimit"))
@@ -614,12 +619,25 @@ void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed)
 	smcmd = st_local("smcmd")
 	smout = st_local("smout")
 	smcov = st_local("smcov")
-	if smcmd=="compet" {
-	
+	if (smcmd=="compet") {
+		d = st_data(., st_local("failure"))
+		numFailures = max(d)
+		H0Mat = J(n,numFailures,0)
+		/*fit model for each failure type*/
+		for (i=1; i<=numFailures; i++) {
+			stata("stset "+st_local("time")+", failure("+st_local("failure")+"=="+strofreal(i)+")")
+			stata("stcox "+smcov)
+			postdraw()
+			/*save posterior draw for calculating linear predictors later*/
+			stata("matrix b"+strofreal(i)+"=e(b)")
+			stata("predict H0, basechazard")
+			H0Mat[,i] = st_data(., "H0")
+			st_dropvar("H0")
+		}
 	}
 	else {
-		if smcmd=="stcox" {
-			outcomeModelCommand = smcov + " " + smcov
+		if (smcmd=="stcox") {
+			outcomeModelCommand = smcmd + " " + smcov
 			stata(outcomeModelCommand)
 			postdraw()
 			stata("predict H0, basechazard")
@@ -653,9 +671,13 @@ void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed)
 	
 	stata("predict smcoutmodxb, xb")
 	
-	st_view(xMis, ., varBeingImputed)
+	st_view(xMis, ., st_local("var"))
 	st_view(outmodxb, ., "smcoutmodxb")
 	
+	if (smcmd=="compet") {
+		outmodxbMat = J(n,numFailures,0)
+	}
+
 	if ((covariateModelCmd=="mlogit") | (covariateModelCmd=="ologit") | (covariateModelCmd=="logistic")) {
 		/*we can sample directly in this case*/
 		if (covariateModelCmd=="logistic") {
@@ -684,23 +706,38 @@ void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed)
 			if (passive!="") {
 				stata(`"quietly updatevars, passive(""'+passive+`"")"')
 			}
-
-			st_dropvar("smcoutmodxb")
-			stata("predict smcoutmodxb, xb")
-
-			if (smcmd=="regress") {
-				deviation = y[imputationNeeded] - outmodxb[imputationNeeded]
-				outcomeDens = normalden(deviation:/(outcomeModResVar^0.5))/(outcomeModResVar^0.5)
-			}
-			else if (smcmd=="logistic") {
-				prob = invlogit(outmodxb[imputationNeeded])
-				ysub = y[imputationNeeded]
-				outcomeDens = prob :* ysub + (J(length(imputationNeeded),1,1) :- prob) :* (J(length(imputationNeeded),1,1) :- ysub)
-			}
-			else if (smcmd=="cox") {
-				outcomeDens = exp(-H0[imputationNeeded] :* exp(outmodxb[imputationNeeded])) :* (exp(outmodxb[imputationNeeded]):^d[imputationNeeded])
-			}
 			
+			if (smcmd=="compet") {
+				for (i=1; i<=numFailures; i++) {
+					stata("matrix tempmat=b"+strofreal(i))
+					stata("ereturn repost b=tempmat")
+					st_dropvar("smcoutmodxb")
+					stata("predict smcoutmodxb, xb")
+					outmodxbMat[,i] = outmodxb[.,.]
+				}
+			
+				outcomeDens = exp(-H0Mat[imputationNeeded,1] :* exp(outmodxbMat[imputationNeeded,1])) :* exp(outmodxbMat[imputationNeeded,1]):^(d[imputationNeeded]:==1)
+				for (i=2; i<=numFailures; i++) {
+					outcomeDens = outcomeDens:* (exp(-H0Mat[imputationNeeded,i] :* exp(outmodxbMat[imputationNeeded,i])) :* exp(outmodxbMat[imputationNeeded,i]):^(d[imputationNeeded]:==i))
+				}
+			}
+			else {
+				st_dropvar("smcoutmodxb")
+				stata("predict smcoutmodxb, xb")
+
+				if (smcmd=="regress") {
+					deviation = y[imputationNeeded] - outmodxb[imputationNeeded]
+					outcomeDens = normalden(deviation:/(outcomeModResVar^0.5))/(outcomeModResVar^0.5)
+				}
+				else if (smcmd=="logistic") {
+					prob = invlogit(outmodxb[imputationNeeded])
+					ysub = y[imputationNeeded]
+					outcomeDens = prob :* ysub + (J(length(imputationNeeded),1,1) :- prob) :* (J(length(imputationNeeded),1,1) :- ysub)
+				}
+				else if (smcmd=="stcox") {
+					outcomeDens = exp(-H0[imputationNeeded] :* exp(outmodxb[imputationNeeded])) :* (exp(outmodxb[imputationNeeded]):^d[imputationNeeded])
+				}
+			}
 			outcomeDensCovDens[,xMisVal] = outcomeDens :* fittedMean[imputationNeeded,xMisVal]
 		}
 		
@@ -791,13 +828,31 @@ void covImp(string scalar missingnessIndicatorVarName, string varBeingImputed)
 				prob = prob :* ysub + (J(length(imputationNeeded),1,1) :- prob) :* (J(length(imputationNeeded),1,1) :- ysub)
 				reject = uDraw :> prob
 			}
-			else if (smcmd=="cox") {
+			else if (smcmd=="stcox") {
 				s_t = exp(-H0[imputationNeeded] :* exp(outmodxb[imputationNeeded]))
 				prob = exp(J(length(imputationNeeded),1,1) + outmodxb[imputationNeeded] - (H0[imputationNeeded] :* exp(outmodxb[imputationNeeded])) ) :* H0[imputationNeeded]
 				prob = d[imputationNeeded]:*prob + (J(length(imputationNeeded),1,1)-d[imputationNeeded]):*s_t
 				reject = uDraw :> prob
 			}
-			
+			else if (smcmd=="compet") {
+				for (i=1; i<=numFailures; i++) {
+					stata("matrix tempmat=b"+strofreal(i))
+					stata("ereturn repost b=tempmat")
+					st_dropvar("smcoutmodxb")
+					stata("predict smcoutmodxb, xb")
+					outmodxbMat[,i] = outmodxb[.,.]
+				}
+				s_t = exp(-H0Mat[imputationNeeded,1] :* exp(outmodxbMat[imputationNeeded,1]))
+				for (i=2; i<=numFailures; i++) {
+					s_t = s_t :* exp(-H0Mat[imputationNeeded,i] :* exp(outmodxbMat[imputationNeeded,i]))
+				}
+				firstTerm = J(length(imputationNeeded),1,1)
+				for (i=1; i<=numFailures; i++) {
+					firstTerm = firstTerm :* (H0Mat[imputationNeeded,i]:*exp(1:+outmodxbMat[imputationNeeded,i])):^(d[imputationNeeded]:==i)
+				}
+				prob = firstTerm :* s_t
+				reject = uDraw :> prob
+			}
 			imputationNeeded = select(imputationNeeded, reject)
 			j = j + 1
 			//length(imputationNeeded)

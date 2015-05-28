@@ -556,12 +556,13 @@ void outcomeImp(string scalar missingnessIndicatorVarName)
 	smcmd = st_local("smcmd")
 	smout = st_local("smout")
 	smcov = st_local("smcov")
-	outcomeModelCommand = smcmd + " " + smout + " " + smcov
-	stata(outcomeModelCommand)
-	
 	st_view(r, ., missingnessIndicatorVarName)
 	st_view(outcomeVar, ., smout)
-	
+
+	/*fit substantive model to those with outcome observed only, since this should speed up convergence */
+	outcomeModelCommand = smcmd + " " + smout + " " + smcov + " if " + missingnessIndicatorVarName + "==1"
+	stata(outcomeModelCommand)
+		
 	outcomeModelCmd = st_global("e(cmd)")
 	postdraw()
 	
@@ -580,7 +581,7 @@ void outcomeImp(string scalar missingnessIndicatorVarName)
 		fittedMean = invlogit(xb)
 	}
 	
-	n = st_numscalar("e(N)")
+	n = st_nobs()
 	imputationNeeded = select(transposeonly(1..n),J(n,1,1)-r)
 	
 	if (outcomeModelCmd=="regress") {

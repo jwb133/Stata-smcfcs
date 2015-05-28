@@ -277,7 +277,20 @@ gen `smcfcsid' = _n
 				local outcomeMiss = 1
 				tempvar `smout'_r
 				gen ``smout'_r' = (`smout'!=.)
-				mata: imputePermute("`smout'", "``smout'_r'")
+				
+				`smcmd' `smout' `smcov'
+				
+				*preliminary improper imputation, based on fit to those with outcome observed
+				if e(cmd)=="regress" {
+					tempvar xb
+					predict `xb', xb
+					replace `smout' = `xb' + e(rmse)*rnormal() if ``smout'_r'==0
+				}
+				else {
+					tempvar pr
+					predict `pr', pr
+					replace `smout' = (runiform()<`pr') if ``smout'_r'==0
+				}
 			}
 			else {
 				local outcomeMiss = 0

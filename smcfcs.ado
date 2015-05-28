@@ -235,7 +235,13 @@ if "`smcmd'"=="stcox" {
 	`quietnoisy' stdescribe
 	if (r(t0_max)>0) {
 		di "Late entry survival data detected"
-		mata: t0IndexGen()
+		mata: t0IndexGen("_t", "_t0")
+	}
+}
+if "`smcmd'"=="compet" {
+	if "`enter'"!="" {
+		di "Late entry competing risks data"
+		mata: t0IndexGen("`time'", "`enter'")
 	}
 }
 
@@ -422,9 +428,12 @@ else {
 			local numFailures = r(max)
 			forvalues i=1(1)`numFailures' {
 				display as text "Cox model for cause `i'"
-				mi stset `time', failure(`failure'==`i')
+				mi stset `time', failure(`failure'==`i') enter(`enter')
 				mi estimate: stcox `smcov'
 			}
+			*clear stset info, to avoid user not being clear which failure type is currently stset
+			mi stset, clear
+			display as text "The data are now not stset. To fit Cox models, you should use mi stset with the failure type of interest specified using the failure() option"
 		}
 		else {
 			if "`smcmd'"=="compet" {
@@ -519,10 +528,10 @@ void imputePermute(string scalar varName, string scalar obsIndicator)
 }
 
 /*generates a Stata variable t0Index that is used to locate H0(_t0) in Cox models*/
-void t0IndexGen()
+void t0IndexGen(string scalar timeName, string scalar enterName)
 {
-	st_view(t, ., "_t")
-	st_view(t0, ., "_t0")
+	st_view(t, ., timeName)
+	st_view(t0, ., enterName)
 	n = st_nobs()
 	
 	loc = t, (1..n)'
@@ -658,7 +667,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 		H0Mat = J(n,numFailures,0)
 		/*fit model for each failure type*/
 		for (i=1; i<=numFailures; i++) {
-			stata("stset "+st_local("time")+", failure("+st_local("failure")+"=="+strofreal(i)+")")
+			stata("stset "+st_local("time")+", failure("+st_local("failure")+"=="+strofreal(i)+") enter("+st_local("enter")+")")
 			stata("stcox "+smcov)
 			postdraw()
 			/*save posterior draw for calculating linear predictors later*/
@@ -666,6 +675,15 @@ void covImp(string scalar missingnessIndicatorVarName)
 			stata("predict H0, basechazard")
 			H0Mat[,i] = st_data(., "H0")
 			st_dropvar("H0")
+			
+			/*generate H0(_t0) for delayed entry, if needed*/
+			if (_st_varindex("t0Index")!=.) {
+				H0append = 0 \ H0Mat[,i]
+				t0Index = 1 :+ st_data(., "t0Index")
+				H0_t0 = H0append[t0Index]
+				/*now we can replace H0 with H0(t)-H0(t0)*/
+				H0Mat[,i] = H0Mat[,i] - H0_t0
+			}
 		}
 	}
 	else {
@@ -681,7 +699,6 @@ void covImp(string scalar missingnessIndicatorVarName)
 			
 			/*generate H0(_t0) for delayed entry, if needed*/
 			if (_st_varindex("t0Index")!=.) {
-				delayedEntry = 1
 				H0append = 0 \ H0
 				t0Index = 1 :+ st_data(., "t0Index")
 				H0_t0 = H0append[t0Index]

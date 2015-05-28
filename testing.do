@@ -51,7 +51,7 @@ smcfcs compet x, reg(x) time(t) failure(d)
 *competing risks substantive model with linear effect
 *testing savetrace
 clear
-set obs 100
+set obs 10000
 gen x=rnormal()
 gen t1=-log(runiform())/exp(x)
 gen t2=-log(runiform())/exp(-0.5*x)
@@ -87,3 +87,30 @@ gen misspr=exp(missxb)/(1+exp(missxb))
 replace x=. if runiform()<misspr
 
 smcfcs compet x, logit(x) time(t) failure(d)
+
+*competing risks substantive model with normal covariate, delayed entry
+clear
+set obs 10000
+gen x=rnormal()
+gen t1=-log(runiform())/exp(x)
+gen t2=-log(runiform())/exp(-0.5*x)
+
+gen t=t1
+replace t=t2 if t2<t1
+gen d=1
+replace d=2 if t2<t1
+
+*generate entry time
+gen entry=-log(runiform())/10
+drop if t<entry
+stset t, failure(d==1) enter(entry)
+stcox x, nohr
+stset t, failure(d==2) enter(entry)
+stcox x, nohr
+
+summ t
+gen missxb=(t-r(mean))/r(sd)
+gen misspr=exp(missxb)/(1+exp(missxb))
+replace x=. if runiform()<misspr
+
+smcfcs compet x, reg(x) time(t) failure(d) enter(entry)

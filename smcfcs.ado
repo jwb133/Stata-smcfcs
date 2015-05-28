@@ -317,11 +317,31 @@ gen `smcfcsid' = _n
 			}
 			
 			if "`savetrace'"!="" {
+				tempname b
+				if "`smcmd'"=="compet" {
+					*if competing risks outcome, modify e(b) so it contains parameters of all Cox models
+					quietly summ `failure'
+					local numFailures = r(max)
+					forvalues i=1(1)`numFailures' {
+						local existcoefnames : colnames b`i'
+						local newcoefnames
+						foreach var of local existcoefnames {
+							local newcoefnames `newcoefnames' failure`i'_`var'
+						}
+						matrix colnames b`i' = `newcoefnames'
+					}
+					matrix `b'=b1
+					forvalues i=2(1)`numFailures' {
+						matrix `b'=`b',b`i'
+					}
+				}
+				else {
+					matrix `b'=e(b)
+				}
+				
 				*first time, set up postfile
 				if "`groupnum'"=="1" & "`imputation'"=="1" & "`cyclenum'"=="1" {
 					local postfilestring imp iter
-					tempname b
-					matrix `b'=e(b)
 					local coefnames : colnames `b'
 					local coefnames : subinstr local coefnames "." "", all
 					local newcoefnames
@@ -334,7 +354,6 @@ gen `smcfcsid' = _n
 				}
 			
 				*post iteration and current estimates of substantive model parameters
-				matrix `b'=e(b)
 				local numparms = colsof(`b')
 				local nextcoef = (`b'[1,1])
 				local tracestring (`nextcoef')
@@ -342,6 +361,7 @@ gen `smcfcsid' = _n
 					local nextcoef = `b'[1,`parm']
 					local tracestring `tracestring' (`nextcoef')
 				}
+				di "`tracestring'"
 				post `tracefile' (`imputation') (`cyclenum') `tracestring'
 			}
 		}

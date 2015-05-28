@@ -48,6 +48,27 @@ replace x=. if runiform()<misspr
 
 smcfcs compet x, reg(x) time(t) failure(d)
 
+*competing risks substantive model with linear effect
+*testing savetrace
+clear
+set obs 100
+gen x=rnormal()
+gen t1=-log(runiform())/exp(x)
+gen t2=-log(runiform())/exp(-0.5*x)
+
+gen t=t1
+replace t=t2 if t2<t1
+gen d=1
+replace d=2 if t2<t1
+
+summ t
+gen missxb=(t-r(mean))/r(sd)
+gen misspr=exp(missxb)/(1+exp(missxb))
+replace x=. if runiform()<misspr
+
+smcfcs compet x, reg(x) time(t) failure(d) savetrace(temp)
+use temp, clear
+
 *competing risks substantive model with binary covariate
 clear
 set obs 10000

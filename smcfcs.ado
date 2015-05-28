@@ -925,6 +925,7 @@ exit
 
 History of smcfcs
 
+28/05/2015  Added functionality for competing risks substantive models, with Cox model for each competing risk
 20/05/2015  Changed savetrace behaviour so that it saved estimates of substantive model parameters, rather than
 			means and SDs of imputed variables.
 30/04/2015  Added code so that Cox model with delayed entry/left truncation is accommodated.

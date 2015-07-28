@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5 8sep2014}{...}
+{* *! version 1.6 28jul2015}{...}
 {vieweralsosee "[MI] mi impute" "help mi_impute"}{...}
 {vieweralsosee "[MI] mi impute chained" "help mi_impute_chained"}{...}
 {vieweralsosee "[MI] mi estimate" "help mi_estimate"}{...}
@@ -16,7 +16,8 @@
 
 {p 8 15 2} {cmd:smcfcs} {it:smcmd} {it:smdepvar} {it:smindepvars}, [ {opt reg:ress}({help varlist:varlist})
 {opt logi:t}({help varlist:varlist}) {opt poisson}({help varlist:varlist}) {opt nbreg}({help varlist:varlist}) {opt mlogit}({help varlist:varlist})
-{opt ologit}({help varlist:varlist}) {opt iter:ations(#)} {opt m(#)} {opt rjlimit(#)} {opt passive(string)}
+{opt ologit}({help varlist:varlist}) {opt time}({help varname:varname}) {opt enter}({help varname:varname}) {opt failure}({help varname:varname})
+{opt iter:ations(#)} {opt m(#)} {opt rjlimit(#)} {opt passive(string)}
 {opt eq(string)} {opt rseed(string)} {opt chainonly} {opt savetrace(filename)} {opt noisily} {opt by}({help varlist:varlist}) ]
 
 {synoptset 25 tabbed}{...}
@@ -29,6 +30,9 @@
 {synopt :{opt nbreg}({help varlist:varlist})}partially observed negative binomial variables to be imputed{p_end}
 {synopt :{opt mlogit}({help varlist:varlist})}partially observed unordered categorical variables to be imputed{p_end}
 {synopt :{opt ologit}({help varlist:varlist})}partially observed ordered categorical variables to be imputed{p_end}
+{synopt :{opt time}({help varname:varname})}for competing risks outcomes, the name of the variable indicating failure time{p_end}
+{synopt :{opt enter}({help varname:varname})}for time to event or competing risks outcomes, an optional variable indicating the time of delayed entry{p_end}
+{synopt :{opt failure}({help varname:varname})}for competing risks outcomes, the name of the variable indicating failure type{p_end}
 {synopt :{opt iter:ations(#)}}specify number of iterations to perform for each imputation; default is 10{p_end}
 {synopt :{opt m(#)}}specify number of imputations to generate; default is 5{p_end}
 {synopt :{opt rjlimit(#)}}specify limit for rejection sampler; default is 1000{p_end}
@@ -44,9 +48,11 @@
 
 {pstd}
 {it:smcmd} {help smdepvar:{it:smdepvar}} {help smindepvars:{it:smindepvars}} specifies the substantive model 
-with which covariates are to be imputed compatibly with. Currently {it:smcmd} can be {help regress:regress}, {help logit:logit} or
-{help stcox:stcox}. In the case of {help stcox:stcox}, the dataset should be {help stset:stset} 
-prior to running smcfcs, and no {help smdepvar:{it:smdepvar}} should be specified.
+with which covariates are to be imputed compatibly with. Currently {it:smcmd} can be {help regress:regress}, {help logit:logit},
+{help stcox:stcox} or compet. In the case of {help stcox:stcox}, the dataset should be {help stset:stset} 
+prior to running smcfcs, and no {help smdepvar:{it:smdepvar}} should be specified. In the case of compet,
+the data should not be {help stset:stset}, but instead the time and failure indicator variables should passed
+using the time and failure options.
 
 
 {title:Description}
@@ -76,6 +82,15 @@ algorithm. Each partially observed covariate is imputed from an imputation model
 
 {phang}
 {opt ologit}({varlist}) specifies the names of the partially observed ordered categorical variables (if any), which are to be imputed.
+
+{phang}
+{opt time}({help varname:varname})} for competing risks outcomes, the name of the variable indicating failure time.
+
+{phang}
+{opt enter}({help varname:varname}) for time to event or competing risks outcomes, an optional variable indicating the time of delayed entry.
+
+{phang}
+{opt failure}({help varname:varname}) for competing risks outcomes, the name of the variable indicating failure type.
 
 {phang}
 {opt iterations(#)} specifies the number of iterations to perform for each imputation; default is 10.
@@ -121,9 +136,9 @@ a covariate model which includes any fully observed variables in the substantive
 
 {pstd}
 {cmd:smcfcs} multiply imputes missing values in covariates based on the fully conditional specification (or chained equations) approach. The 
-user must specify a substantive model for how the outcome depends on the covariates. At present, linear ({help regress:regress}), logistic ({help logistic:logistic}) 
-and Cox proportional hazards ({help stcox:stcox}) substantive models are supported. For the latter, the data should be {help stset:stset} prior
-to running {cmd:smcfcs}. Right censoring and delayed entry (left truncation) are supported.
+user must specify a substantive model for how the outcome depends on the covariates. At present, linear ({help regress:regress}), logistic ({help logistic:logistic}),
+Cox proportional hazards ({help stcox:stcox}) for time to event data, and competing risks substantive models are supported. For Cox models for single
+time to event data, the data should be {help stset:stset} prior to running {cmd:smcfcs}. Right censoring and delayed entry (left truncation) are supported.
 
 {pstd}
 Each partially observed variable is then imputed from an imputation model 
@@ -145,6 +160,12 @@ as factor variables when they serve as predictors in the imputation models of ot
 the substantive model using Stata's i. factor notation if desired. Interactions must however be included by first generating an interaction variable,
 including this in the substantive model, and by passing the corresponding argument to the passive option to enable the interaction variable to be
 updated by the program (see the example).
+
+{pstd}
+For competing risks outcomes, {cmd:smcfcs} assumes a Cox proportional hazards model for each cause of failure. For competing risks
+outcomes you must pass variables to the time and failure options to indicate the corresponding variables. The failure variable should be
+an integer valued variable, with 0 indicating censoring and 1,2,3 etc indicating failures due to each of the competing causes. In the case
+of competing risks outcomes, {cmd:smcfcs} (at present) uses a common set of covariates in each Cox model.
 
 {pstd}
 Once the desired number of imputations have been generated, {cmd:smcfcs} imports the imputations to a Stata {help mi:mi} format ({help mi_styles:flong}), and then fits the substantive model to
@@ -183,17 +204,21 @@ Further details regarding the algorithm used by {cmd:smcfcs} can be found in the
 {pstd}Create multiple imputations of wgt and ht, assuming the outcome y follows a logistic model with bmi (wt / ht^2) as covariate{p_end}
 {phang2}{cmd:smcfcs logistic y bmi, reg(wgt ht) passive(bmi = wt / ht^2)}{p_end}
 
-{pstd}Create multiple imputations of x1 (binary) and x2 (continuous), assuming a Cox model with x1 and x2 as linear terms.{p_end}
+{pstd}Create multiple imputations of x1 (binary) and x2 (continuous), assuming a Cox model with x1 and x2 as linear terms{p_end}
 {phang2}{cmd:smcfcs stcox x1 x2, reg(x2) logit(x1)}{p_end}
+
+{pstd}Competing risks outcomes. Create multiple imputations of x1 (binary) and x2 (continuous), assuming a Cox model for each competing risk 
+with x1 and x2 as linear terms in both{p_end}
+{phang2}{cmd:smcfcs compet x1 x2, reg(x2) logit(x1) time(t) failure(d)}{p_end}
 
 
 {title:References}
 
-{phang}Jonathan W. Bartlett, Shaun R. Seaman, Ian R. White, James R. Carpenter. Multiple imputation of covariates by fully conditional specification: accommodating the substantive model
-{browse "http://doi.org/10.1177/0962280214521348":Statistical Methods in Medical Research 2014; epub}
+{phang}Jonathan W. Bartlett, Shaun R. Seaman, Ian R. White, James R. Carpenter. Multiple imputation of covariates by fully conditional specification: accommodating the substantive model.
+{browse "http://doi.org/10.1177/0962280214521348":Statistical Methods in Medical Research, 24:462-487, 2014}
 
 {phang}Jonathan W. Bartlett, Tim P. Morris. Multiple imputation of covariates by substantive model compatible fully conditional specification.
-The Stata Journal; forthcoming
+{browse "http://www.stata-journal.com/article.html?article=st0387": The Stata Journal, 15:437-456, 2015}
 	
 
 {title:Authors}

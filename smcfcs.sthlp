@@ -185,7 +185,8 @@ the {opt chainonly} and {opt savetrace} options, using a large number of iterati
 If the {opt by} option is specified, {cmd:smcfcs} imputes separately in groups defined by the corresponding {help varlist:varlist}, and then combines these to
 form a single set of imputations for the whole dataset. Ordinarily after generating the imputed datasets {cmd:smcfcs} fits the specified substantive model
 to the imputed datasets. However, if imputation has been performed separately by groups, {cmd:smcfcs} does not do this - in this situation the user must 
-fit an appropriate model in the combined dataset.
+fit an appropriate model in the combined dataset. Note that if a variable is specified in {opt by}, it must not be included as a covariate in the substantive model
+specified when calling {cmd: smcfcs}. In this case however one can still fit a substantive model to the imputed datasets which does include the variable.
 
 {pstd}
 Further details regarding the algorithm used by {cmd:smcfcs} can be found in the article referenced below.
@@ -215,7 +216,7 @@ with x1 and x2 as linear terms in both{p_end}
 {title:References}
 
 {phang}Jonathan W. Bartlett, Shaun R. Seaman, Ian R. White, James R. Carpenter. Multiple imputation of covariates by fully conditional specification: accommodating the substantive model.
-{browse "http://doi.org/10.1177/0962280214521348":Statistical Methods in Medical Research, 24:462-487, 2014}
+{browse "http://doi.org/10.1177/0962280214521348":Statistical Methods in Medical Research, 24:462-487, 2015}
 
 {phang}Jonathan W. Bartlett, Tim P. Morris. Multiple imputation of covariates by substantive model compatible fully conditional specification.
 {browse "http://www.stata-journal.com/article.html?article=st0387": The Stata Journal, 15:437-456, 2015}

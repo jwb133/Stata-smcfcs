@@ -223,8 +223,9 @@ with x1 and x2 as linear terms in both{p_end}
 
 {title:Authors}
 
-{pstd}Jonathan Bartlett, London School of Hygiene & Tropical Medicine, UK{break}
-jonathan.bartlett@lshtm.ac.uk{break}
+{pstd}Jonathan Bartlett{break}
+jwb133@googlemail.com{break}
+{browse "www.thestatsgeek.com"}
 {browse "www.missingdata.org.uk"}
 	
 {pstd}Tim Morris, MRC Clinical Trials Unit at UCL, UK{break}

@@ -230,21 +230,6 @@ else {
 	local numgroups 1
 }
 
-*generate t0Index, to account for delayed entry/left truncation, if necessary
-if "`smcmd'"=="stcox" {
-	`quietnoisy' stdescribe
-	if (r(t0_max)>0) {
-		di "Late entry survival data detected"
-		mata: t0IndexGen("_t", "_t0")
-	}
-}
-if "`smcmd'"=="compet" {
-	if "`enter'"!="" {
-		di "Late entry competing risks data"
-		mata: t0IndexGen("`time'", "`enter'")
-	}
-}
-
 tempvar smcfcsid
 gen `smcfcsid' = _n
 
@@ -255,10 +240,26 @@ gen `smcfcsid' = _n
 		local labelval: label `bygr' `groupnum'
 		noisily display "`labelval'"
 	}
+	
 	`quietnoisy' forvalues imputation = 1/`m' {
 		preserve
 
 		keep if `bygr'==`groupnum'
+		
+		*generate t0Index, to account for delayed entry/left truncation, if necessary
+		if "`smcmd'"=="stcox" {
+			`quietnoisy' stdescribe
+			if (r(t0_max)>0) {
+					`quietnoisy' di "Late entry survival data detected"
+				mata: t0IndexGen("_t", "_t0")
+			}
+		}
+		if "`smcmd'"=="compet" {
+			if "`enter'"!="" {
+				`quietnoisy' di "Late entry competing risks data"
+				mata: t0IndexGen("`time'", "`enter'")
+			}
+		}
 
 		*generate observation indicators
 		foreach var of varlist `partiallyObserved' {

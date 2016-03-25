@@ -31,7 +31,7 @@
 {synopt :{opt mlogit}({help varlist:varlist})}partially observed unordered categorical variables to be imputed{p_end}
 {synopt :{opt ologit}({help varlist:varlist})}partially observed ordered categorical variables to be imputed{p_end}
 {synopt :{opt time}({help varname:varname})}for competing risks outcomes, the name of the variable indicating failure time{p_end}
-{synopt :{opt enter}({help varname:varname})}for time to event or competing risks outcomes, an optional variable indicating the time of delayed entry{p_end}
+{synopt :{opt enter}({help varname:varname})}for competing risks outcomes, an optional variable indicating the time of delayed entry{p_end}
 {synopt :{opt failure}({help varname:varname})}for competing risks outcomes, the name of the variable indicating failure type{p_end}
 {synopt :{opt iter:ations(#)}}specify number of iterations to perform for each imputation; default is 10{p_end}
 {synopt :{opt m(#)}}specify number of imputations to generate; default is 5{p_end}
@@ -87,7 +87,7 @@ algorithm. Each partially observed covariate is imputed from an imputation model
 {opt time}({help varname:varname})} for competing risks outcomes, the name of the variable indicating failure time.
 
 {phang}
-{opt enter}({help varname:varname}) for time to event or competing risks outcomes, an optional variable indicating the time of delayed entry.
+{opt enter}({help varname:varname}) for competing risks outcomes, an optional variable indicating the time of delayed entry.
 
 {phang}
 {opt failure}({help varname:varname}) for competing risks outcomes, the name of the variable indicating failure type.

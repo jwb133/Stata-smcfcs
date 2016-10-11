@@ -224,7 +224,7 @@ with x1 and x2 as linear terms in both{p_end}
 
 {title:Authors}
 
-{pstd}Jonathan Bartlett{break}
+{pstd}Jonathan Bartlett, AstraZeneca, UK{break}
 jwb133@googlemail.com{break}
 {browse "www.thestatsgeek.com"}
 {browse "www.missingdata.org.uk"}

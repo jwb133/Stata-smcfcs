@@ -3,4 +3,4 @@ Stata-smcfcs is a GitHub repository for the Stata program smcfcs, which implemen
 To install the latest version from GitHub into Stata, type:
 net install smcfcs, from (https://raw.githubusercontent.com/jwb133/Stata-smcfcs/master/) replace
 
-See the bottom of the ado file for revision history of the program.
+For revision notes from the command's earlier development, see the bottom of the ado file. For more recent changes, see the GitHub repository.

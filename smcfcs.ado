@@ -19,7 +19,6 @@ if "`r(style)'" != "" {
   }
 }
 
-
 if "`rseed'"!="" {
 	set seed `rseed'
 }
@@ -31,10 +30,10 @@ macro shift
 
 *check that outcome regression command is one of those supported
 if "`smcmd'"=="reg" {
-	local smcmd = regress
+	local smcmd = "regress"
 }
 if "`smcmd'"=="logit" {
-	local smcmd = logistic
+	local smcmd = "logistic"
 }
 if (inlist("`smcmd'","stcox","logistic","regress","compet")==0) {
 		display as error "Specified substantive model regression command (`smcmd') not supported by smcfcs"
@@ -112,6 +111,7 @@ foreach var in `smcov' {
 if `exit'==1 {
 	exit
 }
+
 
 local allCovariates `partiallyObserved' `fullyObserved'
 

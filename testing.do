@@ -114,3 +114,62 @@ gen misspr=exp(missxb)/(1+exp(missxb))
 replace x=. if runiform()<misspr
 
 smcfcs compet x, reg(x) time(t) failure(d) enter(entry)
+
+*Poisson substantive model
+*first with binary missing covariate
+clear
+set obs 10000
+gen z=rnormal()
+gen pr=exp(z)/(1+exp(z))
+gen x=(runiform()<pr)
+gen mu=exp(x+z)
+gen y=rpoisson(mu)
+
+poisson y x z
+
+gen misspr =exp(y-3)/(1+exp(y-3))
+replace x=. if runiform()<misspr
+
+poisson y x z
+
+smcfcs poisson y x z, logit(x)
+
+*now add in an exposure time
+clear
+set obs 10000
+gen exptime = runiform()
+gen z=rnormal()
+gen pr=exp(z)/(1+exp(z))
+gen x=(runiform()<pr)
+gen mu=exp(x+z)
+gen y=rpoisson(mu*exptime)
+
+poisson y x z, exposure(exptime)
+
+gen misspr =exp(y-3)/(1+exp(y-3))
+replace x=. if runiform()<misspr
+
+poisson y x z, exposure(exptime)
+
+smcfcs poisson y x z, exposure(exptime) logit(x)
+
+*now with continuous covariate missing
+*note we reduce the magnitude of the x and z effects
+*here in order to make the acceptance probability larger
+*in rejection sampling
+clear
+set obs 10000
+gen z=(runiform()<0.5)
+gen x=z+rnormal()
+gen mu=exp(0.1*x+0.1*z)
+gen y=rpoisson(mu)
+
+poisson y x z
+
+gen misspr =exp(log(y+1)-2)/(1+exp(log(y+1)-2))
+replace x=. if runiform()<misspr
+
+poisson y x z
+
+smcfcs poisson y x z, reg(x) rjlimit(10000)
+

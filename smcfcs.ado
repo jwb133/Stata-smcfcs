@@ -4,7 +4,7 @@
 capture program drop smcfcs
 program define smcfcs,eclass
 version 11.0
-syntax anything(name=smstring), [REGress(varlist)] [LOGIt(varlist)] [poisson(varlist)] [nbreg(varlist)] [mlogit(varlist)] [ologit(varlist)] [time(varname)] [enter(varname)] [failure(varname)] [ITERations(integer 10)] [m(integer 5)] [rjlimit(integer 1000)] [passive(string)] [eq(string)] [rseed(string)] [chainonly] [savetrace(string)] [NOIsily] [by(varlist)] [clear]
+syntax anything(name=smstring), [REGress(varlist)] [LOGIt(varlist)] [poisson(varlist)] [nbreg(varlist)] [mlogit(varlist)] [ologit(varlist)] [time(varname)] [enter(varname)] [failure(varname)] [ITERations(integer 10)] [m(integer 5)] [rjlimit(integer 1000)] [passive(string)] [eq(string)] [rseed(string)] [chainonly] [savetrace(string)] [NOIsily] [by(varlist)] [clear] [exposure(varname)]
 
 *check mi has not been set already
 quietly mi query
@@ -35,7 +35,7 @@ if "`smcmd'"=="reg" {
 if "`smcmd'"=="logit" {
 	local smcmd = "logistic"
 }
-if (inlist("`smcmd'","stcox","logistic","regress","compet")==0) {
+if (inlist("`smcmd'","stcox","logistic","regress","compet", "poisson")==0) {
 		display as error "Specified substantive model regression command (`smcmd') not supported by smcfcs"
 		exit 0
 }
@@ -440,6 +440,9 @@ else {
 			if "`smcmd'"=="compet" {
 				local outcomeModelCommand stcox `smcov'
 			}
+			else if ("`smcmd'"=="poisson") & ("`exposure'"!="") {
+				local outcomeModelCommand `smcmd' `smout' `smcov', exposure(`exposure')
+			}
 			else {
 				local outcomeModelCommand `smcmd' `smout' `smcov'
 			}
@@ -663,6 +666,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 	smcmd = st_local("smcmd")
 	smout = st_local("smout")
 	smcov = st_local("smcov")
+	exposureTime = st_local("exposure")
 	if (smcmd=="compet") {
 		d = st_data(., st_local("failure"))
 		numFailures = max(d)
@@ -709,7 +713,12 @@ void covImp(string scalar missingnessIndicatorVarName)
 			}
 		}
 		else {
-			outcomeModelCommand = smcmd + " " + smout + " " + smcov
+			if ((smcmd=="poisson") & (exposureTime!="")) {
+				outcomeModelCommand = smcmd + " " + smout + " " + smcov + ", exposure(" + exposureTime + ")"
+			}
+			else {
+				outcomeModelCommand = smcmd + " " + smout + " " + smcov
+			}
 			stata(outcomeModelCommand)
 			postdraw()
 			y = st_data(., smout)
@@ -785,6 +794,9 @@ void covImp(string scalar missingnessIndicatorVarName)
 					prob = invlogit(outmodxb[imputationNeeded])
 					ysub = y[imputationNeeded]
 					outcomeDens = prob :* ysub + (J(length(imputationNeeded),1,1) :- prob) :* (J(length(imputationNeeded),1,1) :- ysub)
+				}
+				else if (smcmd=="poisson") {
+					outcomeDens = poissonp(exp(outmodxb[imputationNeeded]),y[imputationNeeded])
 				}
 				else if (smcmd=="stcox") {
 					outcomeDens = exp(-H0[imputationNeeded] :* exp(outmodxb[imputationNeeded])) :* (exp(outmodxb[imputationNeeded]):^d[imputationNeeded])
@@ -880,6 +892,10 @@ void covImp(string scalar missingnessIndicatorVarName)
 				prob = prob :* ysub + (J(length(imputationNeeded),1,1) :- prob) :* (J(length(imputationNeeded),1,1) :- ysub)
 				reject = uDraw :> prob
 			}
+			else if (smcmd=="poisson") {
+				prob = poissonp(exp(outmodxb[imputationNeeded]),y[imputationNeeded])
+				reject = uDraw :> prob
+			}
 			else if (smcmd=="stcox") {
 				s_t = exp(-H0[imputationNeeded] :* exp(outmodxb[imputationNeeded]))
 				prob = exp(J(length(imputationNeeded),1,1) + outmodxb[imputationNeeded] - (H0[imputationNeeded] :* exp(outmodxb[imputationNeeded])) ) :* H0[imputationNeeded]
@@ -927,6 +943,7 @@ exit
 
 History of smcfcs
 
+16/05/2018  Added functionality for Poisson substantive models, with optional exposure time
 28/05/2015  Added functionality for competing risks substantive models, with Cox model for each competing risk
 20/05/2015  Changed savetrace behaviour so that it saved estimates of substantive model parameters, rather than
 			means and SDs of imputed variables.

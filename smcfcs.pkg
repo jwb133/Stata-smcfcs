@@ -1,14 +1,14 @@
 v 3
 d smcfcs Multiple imputation of partially observed covariates by substantive model compatible fully conditional specification
 d Jonathan Bartlett
-d jwb133@googlemail.com
+d j.w.bartlett@bath.ac.uk
 d www.thestatsgeek.com
 d www.missingdata.org.uk
 d
 d Tim Morris, MRC Clinical Trials Unit at UCL.
 d tim.morris@ucl.ac.uk
 d
-d Distribution-Date: 20161011
+d Distribution-Date: 20180516
 
 * I can also insert comments; these will not be displayed.
 * f lines name the files that comprise your package:

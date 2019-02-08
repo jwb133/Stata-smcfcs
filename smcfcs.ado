@@ -947,6 +947,7 @@ exit
 
 History of smcfcs
 
+08/02/2019  Fixed bug related to st_view in Mata that caused invalid results under Stata 15
 16/05/2018  Added functionality for Poisson substantive models, with optional exposure time
 28/05/2015  Added functionality for competing risks substantive models, with Cox model for each competing risk
 20/05/2015  Changed savetrace behaviour so that it saved estimates of substantive model parameters, rather than

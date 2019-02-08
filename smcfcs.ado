@@ -560,8 +560,6 @@ void outcomeImp(string scalar missingnessIndicatorVarName)
 	smcmd = st_local("smcmd")
 	smout = st_local("smout")
 	smcov = st_local("smcov")
-	st_view(r, ., missingnessIndicatorVarName)
-	st_view(outcomeVar, ., smout)
 
 	/*fit substantive model to those with outcome observed only, since this should speed up convergence */
 	outcomeModelCommand = smcmd + " " + smout + " " + smcov + " if " + missingnessIndicatorVarName + "==1"
@@ -586,8 +584,9 @@ void outcomeImp(string scalar missingnessIndicatorVarName)
 	}
 	
 	n = st_nobs()
+	st_view(r, ., missingnessIndicatorVarName)
 	imputationNeeded = select(transposeonly(1..n),J(n,1,1)-r)
-	
+	st_view(outcomeVar, ., smout)
 	if (outcomeModelCmd=="regress") {
 		outcomeVar[imputationNeeded] = rnormal(1,1,fittedMean[imputationNeeded],newsigmasq^0.5)
 	}
@@ -732,8 +731,8 @@ void covImp(string scalar missingnessIndicatorVarName)
 	
 	stata("predict smcoutmodxb, xb")
 	
-	st_view(xMis, ., st_local("var"))
-	st_view(outmodxb, ., "smcoutmodxb")
+	/*st_view(xMis, ., st_local("var"))
+	st_view(outmodxb, ., "smcoutmodxb")*/
 	
 	if (smcmd=="compet") {
 		outmodxbMat = J(n,numFailures,0)
@@ -748,7 +747,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 		
 		outcomeDensCovDens = J(length(imputationNeeded),numberOutcomes,0)
 		for (xMisVal=1; xMisVal<=numberOutcomes; xMisVal++) {
-			
+			st_view(xMis, ., st_local("var"))
 			if (covariateModelCmd=="logistic") {
 				xMis[imputationNeeded] = J(length(imputationNeeded),1,xMisVal-1)
 			}
@@ -774,6 +773,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 					stata("ereturn repost b=tempmat")
 					st_dropvar("smcoutmodxb")
 					stata("predict smcoutmodxb, xb")
+					st_view(outmodxb, ., "smcoutmodxb")
 					outmodxbMat[,i] = outmodxb[.,.]
 				}
 			
@@ -785,7 +785,8 @@ void covImp(string scalar missingnessIndicatorVarName)
 			else {
 				st_dropvar("smcoutmodxb")
 				stata("predict smcoutmodxb, xb")
-
+				st_view(outmodxb, ., "smcoutmodxb")
+				
 				if (smcmd=="regress") {
 					deviation = y[imputationNeeded] - outmodxb[imputationNeeded]
 					outcomeDens = normalden(deviation:/(outcomeModResVar^0.5))/(outcomeModResVar^0.5)
@@ -806,7 +807,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 		}
 		
 		directImpProbs = outcomeDensCovDens :/ rowsum(outcomeDensCovDens)
-		
+		st_view(xMis, ., st_local("var"))
 		if (covariateModelCmd=="logistic") {
 		
 			directImpProbs = directImpProbs[.,2]
@@ -842,6 +843,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 		j=1
 		
 		while ((length(imputationNeeded)>0) & (j<rjLimit)) {
+			st_view(xMis, ., st_local("var"))
 			if (covariateModelCmd=="regress") {
 				xMis[imputationNeeded] = rnormal(1,1,fittedMean[imputationNeeded],newsigmasq^0.5)
 			}
@@ -881,6 +883,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 			
 			st_dropvar("smcoutmodxb")
 			stata("predict smcoutmodxb, xb")
+			st_view(outmodxb, ., "smcoutmodxb")
 			
 			if (smcmd=="regress") {
 				deviation = y[imputationNeeded] - outmodxb[imputationNeeded]
@@ -908,6 +911,7 @@ void covImp(string scalar missingnessIndicatorVarName)
 					stata("ereturn repost b=tempmat")
 					st_dropvar("smcoutmodxb")
 					stata("predict smcoutmodxb, xb")
+					st_view(outmodxb, ., "smcoutmodxb")
 					outmodxbMat[,i] = outmodxb[.,.]
 				}
 				s_t = exp(-H0Mat[imputationNeeded,1] :* exp(outmodxbMat[imputationNeeded,1]))

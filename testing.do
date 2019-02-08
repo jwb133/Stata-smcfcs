@@ -12,6 +12,31 @@ replace x=. if runiform()<misspr
 gen xsq=x^2
 smcfcs regress y x xsq, reg(x) passive(xsq=x^2)
 
+*linear regression substantive model with binary missing covariate
+clear
+set obs 10000
+gen x=runiform()<0.5
+gen z=runiform()<0.5
+gen y=x+z+rnormal()
+
+summ y
+gen missxb=(y-r(mean))/r(sd)
+gen misspr=exp(missxb)/(1+exp(missxb))
+replace x=. if runiform()<misspr
+
+smcfcs regress y x z, logit(x)
+
+*linear regression substantive model with quadratic effects, and missing outcomes
+clear
+set obs 10000
+gen x=rnormal()
+gen y=x+x^2+rnormal()
+
+replace x=. if runiform()<0.5
+replace y=. if runiform()<0.25
+
+gen xsq=x^2
+smcfcs regress y x xsq, reg(x) passive(xsq=x^2)
 
 *cox substantive model with quadratic effects
 clear
